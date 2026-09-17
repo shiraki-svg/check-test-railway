@@ -1,8 +1,6 @@
 const express = require("express");
-const fs = require("fs");
 const { PDFDocument, rgb } = require("pdf-lib");
 const fontkit = require("@pdf-lib/fontkit");
-const { getFontPath } = require("@noto-pdf-ts/fonts-jp");
 
 const app = express();
 app.use(express.json());
@@ -11,11 +9,23 @@ app.use(express.static("public"));
 
 const PORT = process.env.PORT || 3000;
 const vocabulary = require("./data/system-english.json");
-const FONT_PATH = getFontPath();
-const FONT_BYTES = fs.readFileSync(FONT_PATH);
+
+const FONT_URL = "https://raw.githubusercontent.com/notofonts/noto-cjk/main/Sans/SubsetOTF/JP/NotoSansJP-Regular.otf";
+let fontBytesPromise = null;
+
+function getFontBytes() {
+  if (!fontBytesPromise) {
+    fontBytesPromise = fetch(FONT_URL).then(async response => {
+      if (!response.ok) {
+        throw new Error(`日本語フォント取得失敗: HTTP ${response.status}`);
+      }
+      return new Uint8Array(await response.arrayBuffer());
+    });
+  }
+  return fontBytesPromise;
+}
 
 console.log(`問題データ読込完了: ${vocabulary.length}問`);
-console.log(`日本語フォント: ${FONT_PATH}`);
 
 function shuffle(array) {
   const result = [...array];
@@ -28,8 +38,12 @@ function shuffle(array) {
 
 function selectQuestions(start, end, count, order) {
   const candidates = vocabulary.filter(item => item.no >= start && item.no <= end);
-  if (count > candidates.length) throw new Error("出題数が指定範囲の問題数を超えています。");
-  return order === "random" ? shuffle(candidates).slice(0, count) : candidates.slice(0, count);
+  if (count > candidates.length) {
+    throw new Error("出題数が指定範囲の問題数を超えています。");
+  }
+  return order === "random"
+    ? shuffle(candidates).slice(0, count)
+    : candidates.slice(0, count);
 }
 
 function centeredX(font, text, size, pageWidth) {
@@ -56,14 +70,15 @@ async function buildPDF(questions, type, settings) {
   const isAnswer = type === "answer";
   const pdfDoc = await PDFDocument.create();
   pdfDoc.registerFontkit(fontkit);
-  const font = await pdfDoc.embedFont(FONT_BYTES, { subset: true });
+
+  const fontBytes = await getFontBytes();
+  const font = await pdfDoc.embedFont(fontBytes, { subset: false });
 
   const PAGE_W = 595.28;
   const PAGE_H = 841.89;
   const MARGIN = 48;
   const TEXT_W = PAGE_W - MARGIN * 2;
 
-  // 表紙
   let page = pdfDoc.addPage([PAGE_W, PAGE_H]);
   const school = "武田塾 武蔵境校";
   const title = isAnswer ? "模範解答" : "確認テスト";
@@ -96,7 +111,6 @@ async function buildPDF(questions, type, settings) {
   page.drawText(`範囲：No.${settings.start} ～ No.${settings.end}`, { x: 70, y: 305, size: 13, font });
   page.drawText(`問題数：${settings.count}問`, { x: 70, y: 270, size: 13, font });
 
-  // 問題ページ
   page = pdfDoc.addPage([PAGE_W, PAGE_H]);
   let y = PAGE_H - 65;
 
@@ -109,7 +123,9 @@ async function buildPDF(questions, type, settings) {
     const item = questions[i];
     const questionText = `${i + 1}.  ${item.word}`;
     const qLines = wrapText(questionText, font, 11, TEXT_W);
-    const answerLines = isAnswer ? wrapText(`模範解答：${item.answer}`, font, 10, TEXT_W) : [];
+    const answerLines = isAnswer
+      ? wrapText(`模範解答：${item.answer}`, font, 10, TEXT_W)
+      : [];
     const needed = qLines.length * 17 + (isAnswer ? answerLines.length * 15 + 18 : 38);
 
     if (y - needed < 55) newQuestionPage();
@@ -156,14 +172,20 @@ async function buildPDF(questions, type, settings) {
   return Buffer.from(await pdfDoc.save());
 }
 
-app.get("/health", (req, res) => {
-  res.json({
-    status: "ok",
-    questions: vocabulary.length,
-    japaneseFont: true,
-    fontPath: FONT_PATH,
-    pdfEngine: "pdf-lib"
-  });
+app.get("/health", async (req, res) => {
+  try {
+    const bytes = await getFontBytes();
+    res.json({
+      status: "ok",
+      questions: vocabulary.length,
+      japaneseFont: true,
+      fontType: "static-otf",
+      fontBytes: bytes.length,
+      pdfEngine: "pdf-lib"
+    });
+  } catch (error) {
+    res.status(500).json({ status: "error", message: error.message });
+  }
 });
 
 app.get("/generate", async (req, res) => {
@@ -205,4 +227,7 @@ app.get("/generate", async (req, res) => {
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`確認テストサーバー起動: port ${PORT}`);
+  getFontBytes()
+    .then(bytes => console.log(`日本語Static OTF読込完了: ${bytes.length} bytes`))
+    .catch(error => console.error("日本語フォント事前読込失敗:", error.message));
 });
