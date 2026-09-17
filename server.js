@@ -1,6 +1,6 @@
 const express = require("express");
 const PDFDocument = require("pdfkit");
-const { getFontPath } = require("@noto-pdf-ts/fonts-cjk");
+const { getFontPath } = require("@noto-pdf-ts/fonts-jp");
 
 const app = express();
 app.use(express.json());
@@ -29,9 +29,7 @@ function selectQuestions(start, end, count, order) {
   return order === "random" ? shuffle(candidates).slice(0, count) : candidates.slice(0, count);
 }
 
-function useJP(doc) {
-  doc.font(FONT_PATH);
-}
+function useJP(doc) { doc.font(FONT_PATH); }
 
 function addCover(doc, isAnswer, settings) {
   useJP(doc);
@@ -51,15 +49,12 @@ function addCover(doc, isAnswer, settings) {
 function addQuestionPages(doc, questions, isAnswer) {
   doc.addPage();
   useJP(doc);
-
   questions.forEach((item, index) => {
     if (doc.y > (isAnswer ? 735 : 720)) {
       doc.addPage();
       useJP(doc);
     }
-
     doc.fontSize(11).text(`${index + 1}.  ${item.word}`, { width: 500 });
-
     if (isAnswer) {
       doc.moveDown(0.3);
       doc.fontSize(10).text(`模範解答：${item.answer}`, { width: 500 });
@@ -78,64 +73,42 @@ function addAnswerFooters(doc) {
   for (let i = range.start; i < range.start + range.count; i++) {
     doc.switchToPage(i);
     useJP(doc);
-    doc.fontSize(8).text("模範解答・講師用", 45, 810, {
-      align: "right",
-      width: 500,
-      lineBreak: false
-    });
+    doc.fontSize(8).text("模範解答・講師用", 45, 810, { align: "right", width: 500, lineBreak: false });
   }
 }
 
 function createPDF(res, questions, type, settings) {
   const isAnswer = type === "answer";
-  const doc = new PDFDocument({ size: "A4", margin: 45, bufferPages: true });
-
+  const doc = new PDFDocument({ size: "A4", margin: 45, bufferPages: true, autoFirstPage: true });
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader("Content-Disposition", `inline; filename="${isAnswer ? "answer" : "test"}_${settings.start}-${settings.end}_${settings.count}.pdf"`);
   res.setHeader("Cache-Control", "no-store");
-
-  doc.on("error", err => console.error("PDF生成エラー:", err));
   doc.pipe(res);
-
   addCover(doc, isAnswer, settings);
   addQuestionPages(doc, questions, isAnswer);
   if (isAnswer) addAnswerFooters(doc);
   doc.end();
 }
 
-app.get("/health", (req, res) => {
-  res.json({ status: "ok", questions: vocabulary.length, japaneseFont: true, fontPath: FONT_PATH });
-});
+app.get("/health", (req, res) => res.json({ status: "ok", questions: vocabulary.length, japaneseFont: true, fontPath: FONT_PATH }));
 
 app.get("/generate", (req, res) => {
-  const start = Number(req.query.start);
-  const end = Number(req.query.end);
-  const count = Number(req.query.count);
-  const order = req.query.order || "random";
-  const type = req.query.type || "test";
-
-  if (!Number.isInteger(start) || !Number.isInteger(end) || !Number.isInteger(count)) {
-    return res.status(400).send("入力値が正しくありません。");
-  }
-  if (start < 1 || end > 2027 || start > end) {
-    return res.status(400).send("出題範囲が正しくありません。");
-  }
-  if (count < 1 || count > 100) {
-    return res.status(400).send("出題数は1〜100問で指定してください。");
-  }
-  if (type !== "test" && type !== "answer") {
-    return res.status(400).send("出力形式が正しくありません。");
-  }
-
   try {
+    const start = Number(req.query.start);
+    const end = Number(req.query.end);
+    const count = Number(req.query.count);
+    const order = req.query.order || "random";
+    const type = req.query.type || "test";
+    if (!Number.isInteger(start) || !Number.isInteger(end) || !Number.isInteger(count)) return res.status(400).send("入力値が正しくありません。");
+    if (start < 1 || end > 2027 || start > end) return res.status(400).send("出題範囲が正しくありません。");
+    if (count < 1 || count > 100) return res.status(400).send("出題数は1〜100問で指定してください。");
+    if (type !== "test" && type !== "answer") return res.status(400).send("出力形式が正しくありません。");
     const questions = selectQuestions(start, end, count, order);
     createPDF(res, questions, type, { start, end, count });
   } catch (error) {
-    console.error(error);
-    if (!res.headersSent) res.status(500).send(error.message);
+    console.error("生成エラー:", error);
+    if (!res.headersSent) res.status(500).send(`PDF生成エラー: ${error.message}`);
   }
 });
 
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`確認テストサーバー起動: port ${PORT}`);
-});
+app.listen(PORT, "0.0.0.0", () => console.log(`確認テストサーバー起動: port ${PORT}`));
