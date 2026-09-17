@@ -10,7 +10,7 @@
     "node": ">=20"
   },
   "dependencies": {
-    "@noto-pdf-ts/fonts-cjk": "1.0.0-alpha.3",
+    "@noto-pdf-ts/fonts-jp": "1.0.0-alpha.3",
     "express": "^5.1.0",
     "pdfkit": "^0.17.2"
   }
