@@ -1,6 +1,6 @@
 const express = require("express");
 const PDFDocument = require("pdfkit");
-const path = require("path");
+const { getFontPath } = require("@noto-pdf-ts/fonts-cjk");
 
 const app = express();
 app.use(express.json());
@@ -9,12 +9,7 @@ app.use(express.static("public"));
 
 const PORT = process.env.PORT || 3000;
 const vocabulary = require("./data/system-english.json");
-
-// npm依存として同梱される日本語フォントを使用。Railway OSには依存しない。
-const FONT_PATH = path.join(
-  path.dirname(require.resolve("@noto-pdf-ts/fonts-cjk/package.json")),
-  "NotoSansCJKjp-Regular.otf"
-);
+const FONT_PATH = getFontPath();
 
 console.log(`問題データ読込完了: ${vocabulary.length}問`);
 console.log(`日本語フォント: ${FONT_PATH}`);
@@ -99,7 +94,6 @@ function createPDF(res, questions, type, settings) {
   res.setHeader("Content-Disposition", `inline; filename="${isAnswer ? "answer" : "test"}_${settings.start}-${settings.end}_${settings.count}.pdf"`);
   res.setHeader("Cache-Control", "no-store");
 
-  // PDFKit側のストリームエラーでNodeプロセス全体を落とさない。
   doc.on("error", err => console.error("PDF生成エラー:", err));
   doc.pipe(res);
 
@@ -110,7 +104,7 @@ function createPDF(res, questions, type, settings) {
 }
 
 app.get("/health", (req, res) => {
-  res.json({ status: "ok", questions: vocabulary.length, japaneseFont: true });
+  res.json({ status: "ok", questions: vocabulary.length, japaneseFont: true, fontPath: FONT_PATH });
 });
 
 app.get("/generate", (req, res) => {
