@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>確認テスト作成｜武田塾 武蔵境校</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+        "Noto Sans JP", sans-serif;
+      background: #f3f6fa;
+      color: #1f2937;
+    }
+
+    .header {
+      background: #123b66;
+      color: white;
+      padding: 28px 20px;
+      text-align: center;
+    }
+
+    .header h1 {
+      margin: 0;
+      font-size: 28px;
+    }
+
+    .header p {
+      margin: 8px 0 0;
+      opacity: 0.85;
+    }
+
+    .container {
+      max-width: 720px;
+      margin: 36px auto;
+      padding: 0 18px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 30px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+    }
+
+    .book {
+      background: #eef5ff;
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 24px;
+    }
+
+    .book-label {
+      font-size: 12px;
+      color: #64748b;
+      margin-bottom: 5px;
+    }
+
+    .book-name {
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .field {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    input,
+    select {
+      width: 100%;
+      height: 48px;
+      padding: 0 14px;
+      border: 1px solid #cbd5e1;
+      border-radius: 9px;
+      font-size: 16px;
+      background: white;
+    }
+
+    input:focus,
+    select:focus {
+      outline: none;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+    }
+
+    .create-button {
+      width: 100%;
+      border: 0;
+      border-radius: 11px;
+      background: #123b66;
+      color: white;
+      font-size: 19px;
+      font-weight: 700;
+      padding: 16px;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+
+    .create-button:hover {
+      opacity: .92;
+    }
+
+    .result {
+      display: none;
+      margin-top: 28px;
+      padding-top: 25px;
+      border-top: 1px solid #e2e8f0;
+    }
+
+    .result.show {
+      display: block;
+    }
+
+    .success {
+      text-align: center;
+      font-weight: 700;
+      margin-bottom: 18px;
+      color: #15803d;
+    }
+
+    .pdf-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .pdf-button {
+      display: block;
+      text-decoration: none;
+      text-align: center;
+      border-radius: 10px;
+      padding: 15px 10px;
+      font-weight: 700;
+    }
+
+    .test {
+      background: #2563eb;
+      color: white;
+    }
+
+    .answer {
+      background: #dc2626;
+      color: white;
+    }
+
+    .note {
+      margin-top: 16px;
+      font-size: 13px;
+      color: #64748b;
+      text-align: center;
+    }
+
+    @media (max-width: 600px) {
+      .row,
+      .pdf-buttons {
+        grid-template-columns: 1fr;
+      }
+
+      .card {
+        padding: 22px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="header">
+    <h1>確認テスト作成</h1>
+    <p>武田塾 武蔵境校</p>
+  </div>
+
+  <div class="container">
+    <div class="card">
+
+      <div class="book">
+        <div class="book-label">参考書</div>
+        <div class="book-name">システム英単語</div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label for="start">開始番号</label>
+          <input
+            id="start"
+            type="number"
+            min="1"
+            max="2027"
+            value="1"
+          >
+        </div>
+
+        <div class="field">
+          <label for="end">終了番号</label>
+          <input
+            id="end"
+            type="number"
+            min="1"
+            max="2027"
+            value="100"
+          >
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label for="count">出題数</label>
+          <input
+            id="count"
+            type="number"
+            min="1"
+            max="100"
+            value="10"
+          >
+        </div>
+
+        <div class="field">
+          <label for="order">並び順</label>
+          <select id="order">
+            <option value="random">ランダム</option>
+            <option value="number">番号順</option>
+          </select>
+        </div>
+      </div>
+
+      <button
+        class="create-button"
+        onclick="createTest()"
+      >
+        確認テストを作成
+      </button>
+
+      <div id="result" class="result">
+
+        <div class="success">
+          ✓ 確認テストを作成しました
+        </div>
+
+        <div class="pdf-buttons">
+
+          <a
+            id="testLink"
+            class="pdf-button test"
+            target="_blank"
+          >
+            問題PDFを開く
+          </a>
+
+          <a
+            id="answerLink"
+            class="pdf-button answer"
+            target="_blank"
+          >
+            模範解答PDFを開く
+          </a>
+
+        </div>
+
+        <div class="note">
+          問題冊子と模範解答冊子は別々に印刷してください
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    function createTest() {
+      const start = Number(
+        document.getElementById("start").value
+      );
+
+      const end = Number(
+        document.getElementById("end").value
+      );
+
+      const count = Number(
+        document.getElementById("count").value
+      );
+
+      const order =
+        document.getElementById("order").value;
+
+      if (
+        start < 1 ||
+        end > 2027 ||
+        start > end
+      ) {
+        alert("出題範囲を確認してください。");
+        return;
+      }
+
+      if (
+        count < 1 ||
+        count > 100
+      ) {
+        alert("出題数は1〜100問で指定してください。");
+        return;
+      }
+
+      const available = end - start + 1;
+
+      if (count > available) {
+        alert(
+          "出題数が指定範囲の単語数を超えています。"
+        );
+        return;
+      }
+
+      const base =
+        `/generate?start=${start}` +
+        `&end=${end}` +
+        `&count=${count}` +
+        `&order=${order}`;
+
+      document.getElementById("testLink").href =
+        base + "&type=test";
+
+      document.getElementById("answerLink").href =
+        base + "&type=answer";
+
+      document
+        .getElementById("result")
+        .classList.add("show");
+    }
+  </script>
+
+</body>
+</html>
